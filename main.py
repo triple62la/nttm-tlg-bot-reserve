@@ -4,14 +4,14 @@ from ttm import TTMApi
 from storage.models.subscribers_storage import Subscribers
 from storage.models.tickets_storage import TicketsStorage
 import bot_handlers
-from utils import Loader, find_tt
-
+from utils import Loader, find_tt, get_config
 
 subscribers_storage = Subscribers()
 tickets_storage = TicketsStorage()
-bot = AsyncTeleBot(token="5937504760:AAGhB_UgaIt8hK7xmP9hO_GiViC0b57gZMU")
+config = get_config()
+bot = AsyncTeleBot(token=config["token"])
 bot_handlers.initialize_handlers(bot, subscribers_storage)
-login, passw = ("rakhimzhon.dovidov@rt.ru", "123456789")  # input("Введите логин "), input("Введите пароль ")
+login, passw = (config["login"], config["password"])
 ttm_api = TTMApi(login, passw, "http://10.42.110.22", print)
 loader = Loader()
 
@@ -44,7 +44,6 @@ async def send_result(sub_chat_id, ticket):
 
 
 async def send_results(parsed_tickets):
-
     for ticket in parsed_tickets:
         if not await tickets_storage.includes(ticket["ticketId"]):
             msgs_arr = ticket.get("messages", [])
@@ -93,6 +92,7 @@ async def main():
         await asyncio.gather(bot_coro, nttm_coro, loader_coro)
     except Exception as e:
         print(f"В работе главного процесса произошла ошибка: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

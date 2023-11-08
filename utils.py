@@ -1,5 +1,7 @@
 import asyncio
 import datetime
+import json
+import os.path
 import sys
 
 
@@ -14,11 +16,14 @@ def find_index(arr: list, callback):
         if callback(item):
             return index
 
-def find_tt(arr, ticketId:int):
+
+def find_tt(arr, ticketId: int):
     for item in arr:
         if item["ticketId"] == ticketId:
             return item
     return
+
+
 def filter(arr, callback):
     results = []
     for item in arr:
@@ -60,3 +65,14 @@ class Loader:
 
     async def stop(self):
         self.stop_flag = True
+
+
+def get_config():
+    if not os.path.exists("config.json"):
+        raise Exception("Файл конфигурации не найден, положите заполненный config.json в корневую директорию!")
+    else:
+        with open("config.json", "r") as f:
+            data = json.loads(f.read())
+            if not data:
+                raise Exception("Похоже что файл пуст")
+            return data
