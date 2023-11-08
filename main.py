@@ -11,8 +11,8 @@ tickets_storage = TicketsStorage()
 config = get_config()
 bot = AsyncTeleBot(token=config["token"])
 bot_handlers.initialize_handlers(bot, subscribers_storage)
-login, passw = (config["login"], config["password"])
-ttm_api = TTMApi(login, passw, "http://10.42.110.22", print)
+login, passw, url = (config["login"], config["password"], config["nttm_url"])
+ttm_api = TTMApi(login, passw, url, print)
 loader = Loader()
 
 
