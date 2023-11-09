@@ -1,5 +1,8 @@
 import telebot.types
 import socket
+from storage.models.tickets_storage import TicketsStorage
+
+tickets_storage = TicketsStorage()
 
 
 def initialize_handlers(bot, subscribers_storage):
@@ -31,5 +34,12 @@ def initialize_handlers(bot, subscribers_storage):
 
     @bot.message_handler(commands=["unsub"])
     async def remove_subscriber(message: telebot.types.Message):
-        await subscribers_storage.remove_subscriber(message.chat.id)
+        subscriber = message.chat.id
+        await subscribers_storage.remove_subscriber(subscriber)
+        sent_tt = await tickets_storage.get_list()
+        for tt in sent_tt:
+            messages = tt.get("messages", [])
+            for msg in messages:
+                if msg["chat_id"] == subscriber:
+                    await bot.delete_message(msg["chat_id"], msg["id"])
         await bot.send_message(message.chat.id, f"""Этот чат отписан от получения новых тикетов""")

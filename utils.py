@@ -1,8 +1,6 @@
-import asyncio
 import datetime
 import json
 import os.path
-import sys
 
 
 def find(arr, callback):
@@ -47,26 +45,6 @@ def filter_indexes(arr, callback):
     return results
 
 
-class Loader:
-
-    def __init__(self):
-        self.stop_flag = False
-
-    async def start(self):
-        self.stop_flag = False
-        string = ""
-        while not self.stop_flag:
-            await asyncio.sleep(0.7)
-            sys.stdout.flush()
-            string += "."
-            sys.stdout.write("\r" + string)
-            if len(string) > 10:
-                string = ""
-
-    async def stop(self):
-        self.stop_flag = True
-
-
 def get_config():
     if not os.path.exists("config.json"):
         raise Exception("Файл конфигурации не найден, положите заполненный config.json в корневую директорию!")
@@ -76,3 +54,15 @@ def get_config():
             if not data:
                 raise Exception("Похоже что файл пуст")
             return data
+
+
+def ask_config():
+    config = {}
+    config["nttm_url"] = input("Введите url-адрес NTTM в формате http://10.10.10.10 ")
+    config["login"] = input(
+        "\rВведите логин NTTM(нужен свободный логин, который не задействован в работе, иначе, будет перебивать авторизацию) ")
+    config["password"] = input("\rВведите пароль NTTM " + " "*65)
+    config["polling_interval"] = int(input("\rИнтервал опроса NTTM (сек). Рекомендуется не менее 10 "))
+    with open("config.json", "w") as f:
+        f.write(json.dumps(config))
+    return config

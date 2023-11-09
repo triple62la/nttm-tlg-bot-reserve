@@ -1,14 +1,21 @@
+import os
+
 from telebot.async_telebot import AsyncTeleBot
 import asyncio
 from ttm import TTMApi
 from storage.models.subscribers_storage import Subscribers
 from storage.models.tickets_storage import TicketsStorage
 import bot_handlers
-from utils import Loader, find_tt, get_config
+from utils import find_tt, get_config, ask_config
+from console import title, Loader
+import aiohttp
 
 subscribers_storage = Subscribers()
 tickets_storage = TicketsStorage()
-config = get_config()
+try:
+    config = get_config()
+except:
+    config = ask_config()
 bot = AsyncTeleBot(token=config["token"])
 bot_handlers.initialize_handlers(bot, subscribers_storage)
 login, passw, url = (config["login"], config["password"], config["nttm_url"])
@@ -71,27 +78,41 @@ async def send_notification(msg):
 
 async def set_interval(callback, sec):
     while True:
-        await asyncio.sleep(sec)
+        await loader.countdown("Ожидание", start_from=sec)
         await callback()
 
 
 async def nttm_polling():
     # await loader.start()
-    data = await ttm_api.fetch_tickets()
+    data = await ttm_api.fetch_tickets_with_announce()
     tts_to_send, tts_to_remove = await parse(data)
     await send_results(tts_to_send)
     await remove_results(tts_to_remove)
 
 
 async def main():
+    exit_flag = False
+    print(title)
     try:
-        await ttm_api.authorize()
+        await ttm_api.authorize_with_annonce()
         bot_coro = asyncio.create_task(bot.polling())
-        nttm_coro = asyncio.create_task(set_interval(nttm_polling, 5))
-        loader_coro = asyncio.create_task(loader.start())
-        await asyncio.gather(bot_coro, nttm_coro, loader_coro)
+        nttm_coro = asyncio.create_task(set_interval(nttm_polling, config["polling_interval"]))
+        await asyncio.gather(bot_coro, nttm_coro)
+
+    except aiohttp.ClientConnectorError:
+        print("\rПроблема с подключением к NTTM ")
+
+    except KeyboardInterrupt:
+        exit_flag = True
+        exit(0)
     except Exception as e:
-        print(f"В работе главного процесса произошла ошибка: {e}")
+        print(f"\rВ работе главного процесса произошла ошибка: {e}")
+    finally:
+        if exit_flag:
+            quit(0)
+        await loader.countdown("В работе главного процесса произошла ошибка. Выполняется перезапуск через",
+                               start_from=20)
+        await main()
 
 
 if __name__ == "__main__":
