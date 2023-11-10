@@ -51,3 +51,6 @@ class StoragedList(DataStorage):
             if callback(el):
                 return True
         return False
+
+    async def _reset(self):
+        await self._write(self._key, value=[])

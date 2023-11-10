@@ -1,26 +1,29 @@
-import os
-
 from telebot.async_telebot import AsyncTeleBot
 import asyncio
 from ttm import TTMApi
 from storage.models.subscribers_storage import Subscribers
 from storage.models.tickets_storage import TicketsStorage
+from storage.models.reports_storage import ReportsStorage
 import bot_handlers
 from utils import find_tt, get_config, ask_config
 from console import title, Loader
 import aiohttp
 
+loader = Loader()
 subscribers_storage = Subscribers()
 tickets_storage = TicketsStorage()
+reports_storage = ReportsStorage()
+
+
 try:
     config = get_config()
 except:
     config = ask_config()
-bot = AsyncTeleBot(token=config["token"])
-bot_handlers.initialize_handlers(bot, subscribers_storage)
+
 login, passw, url = (config["login"], config["password"], config["nttm_url"])
 ttm_api = TTMApi(login, passw, url, print)
-loader = Loader()
+bot = AsyncTeleBot(token=config["token"])
+bot_handlers.initialize_handlers(bot, subscribers_storage)
 
 
 def _passes_conditions(tt):
@@ -70,10 +73,23 @@ async def remove_results(tts_to_remove):
         await tickets_storage.remove(tt["ticketId"])
 
 
-async def send_notification(msg):
+async def report_problem(problem_msg):
     subscribers = await subscribers_storage.get_subscribers()
     for sub in subscribers:
-        await bot.send_message(sub, msg)
+        msg = await bot.send_message(sub, problem_msg)
+        await reports_storage.add({"chat_id": msg.chat.id, "id": msg.id})
+
+
+async def remove_reports():
+    async def del_msg(report):
+        await bot.delete_message(report["chat_id"], report["id"])
+
+    reports = await reports_storage.get_list()
+    if not reports:
+        return
+    task_list = [asyncio.create_task(del_msg(rep)) for rep in reports]
+    await asyncio.gather(*task_list)
+    await reports_storage.reset()
 
 
 async def set_interval(callback, sec):
@@ -91,8 +107,8 @@ async def nttm_polling():
 
 
 async def main():
-    exit_flag = False
     print(title)
+    await remove_reports()
     try:
         await ttm_api.authorize_with_annonce()
         bot_coro = asyncio.create_task(bot.polling())
@@ -101,18 +117,15 @@ async def main():
 
     except aiohttp.ClientConnectorError:
         print("\rПроблема с подключением к NTTM ")
-
+        await report_problem("Проблема с подключением к NTTM. Проверьте подключение к капсуле")
     except KeyboardInterrupt:
-        exit_flag = True
-        exit(0)
+        quit(-1)
     except Exception as e:
         print(f"\rВ работе главного процесса произошла ошибка: {e}")
+        await report_problem(f"В работе главного процесса произошла ошибка: {e}."
+                             f"Необходим перезапуск программы((")
     finally:
-        if exit_flag:
-            quit(0)
-        await loader.countdown("В работе главного процесса произошла ошибка. Выполняется перезапуск через",
-                               start_from=20)
-        await main()
+        quit(0)
 
 
 if __name__ == "__main__":
