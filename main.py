@@ -13,8 +13,7 @@ loader = Loader()
 subscribers_storage = Subscribers()
 tickets_storage = TicketsStorage()
 reports_storage = ReportsStorage()
-
-
+ERR = None
 try:
     config = get_config()
 except:
@@ -99,7 +98,8 @@ async def set_interval(callback, sec):
 
 
 async def nttm_polling():
-    # await loader.start()
+    if not ttm_api.isAuthorized:
+        await ttm_api.authorize_with_annonce()
     data = await ttm_api.fetch_tickets_with_announce()
     tts_to_send, tts_to_remove = await parse(data)
     await send_results(tts_to_send)
@@ -108,24 +108,28 @@ async def nttm_polling():
 
 async def main():
     print(title)
-    await remove_reports()
+    err = None
     try:
-        await ttm_api.authorize_with_annonce()
         bot_coro = asyncio.create_task(bot.polling())
         nttm_coro = asyncio.create_task(set_interval(nttm_polling, config["polling_interval"]))
         await asyncio.gather(bot_coro, nttm_coro)
-
+        await remove_reports()
     except aiohttp.ClientConnectorError:
         print("\rПроблема с подключением к NTTM ")
         await report_problem("Проблема с подключением к NTTM. Проверьте подключение к капсуле")
+        err = "Проблема с подключением к NTTM. Проверьте подключение к капсуле"
     except KeyboardInterrupt:
+        err = "Прервано пользователем"
         quit(-1)
     except Exception as e:
         print(f"\rВ работе главного процесса произошла ошибка: {e}")
         await report_problem(f"В работе главного процесса произошла ошибка: {e}."
                              f"Необходим перезапуск программы((")
+        err = f"В работе главного процесса произошла ошибка: {e}.Необходим перезапуск программы(("
     finally:
-        quit(0)
+        if err and err != "Прервано пользователем":
+            await loader.countdown(err)
+        quit(-1)
 
 
 if __name__ == "__main__":

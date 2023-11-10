@@ -21,6 +21,7 @@ class TTMApi:
         }
         self.session = None
         self.loader = Loader()
+        self.isAuthorized = False
 
     async def authorize(self):
 
@@ -34,6 +35,7 @@ class TTMApi:
         async with self.session.post("/nttm-task-handler/api/authenticate", json=payload) as response:
             data = await response.json()
             self.session.headers.update({'Authorization': "Bearer " + data["id_token"]})
+            self.isAuthorized = True
         await self.loader.stop()
 
     async def authorize_with_annonce(self):
@@ -63,7 +65,8 @@ class TTMApi:
                                      json=[]) as resp:
             if resp.status == 401:
                 await self.loader.stop()
-                await self.authorize()
+                self.isAuthorized = False
+                await self.authorize_with_annonce()
                 return []
             data = await resp.json()
             content = data.get("content", [])
