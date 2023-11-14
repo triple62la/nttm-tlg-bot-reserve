@@ -1,6 +1,10 @@
 import datetime
 import json
 import os.path
+import sys
+import time
+
+import psutil
 
 
 def find(arr, callback):
@@ -45,6 +49,19 @@ def filter_indexes(arr, callback):
     return results
 
 
+def load_config():
+    if "-config" in sys.argv:
+        return ask_config()
+    else:
+        try:
+            return get_config()
+        except:
+            if input("Файл конфигурации не найден, запустить мастера по созданию?").lower() in ["y", "yes", "у"]:
+                return ask_config()
+            else:
+                sys.exit(0)
+
+
 def get_config():
     if not os.path.exists("config.json"):
         raise Exception("Файл конфигурации не найден, положите заполненный config.json в корневую директорию!")
@@ -60,9 +77,25 @@ def ask_config():
     config = {}
     config["nttm_url"] = input("Введите url-адрес NTTM в формате http://10.10.10.10 ")
     config["login"] = input(
-        "\rВведите логин NTTM(нужен свободный логин, который не задействован в работе, иначе, будет перебивать авторизацию) ")
-    config["password"] = input("\rВведите пароль NTTM " + " "*65)
+        "\rВведите логин NTTM(нужен свободный логин, который не задействован в работе, иначе, бот будет отбирать у вас авторизацию в NTTM) ")
+    config["password"] = input("\rВведите пароль NTTM ")
     config["polling_interval"] = int(input("\rИнтервал опроса NTTM (сек). Рекомендуется не менее 10 "))
     with open("config.json", "w") as f:
         f.write(json.dumps(config))
     return config
+
+
+def get_self_pid():
+    for process in psutil.process_iter():
+        if process.name() == sys.argv[0].split("\\")[-1].split(".")[0] + ".exe":
+            return process.pid
+
+
+def check_single_instance():
+    if os.path.exists("process.lock"):
+        print("Вы не можете запустить несколько экземпляров приложения")
+        time.sleep(5)
+        sys.exit(-1)
+    else:
+        with open("process.lock", "w") as f:
+            f.write(str(get_self_pid()))

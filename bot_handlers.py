@@ -1,17 +1,30 @@
+import asyncio
+
 import telebot.types
 import socket
+from telebot.async_telebot import AsyncTeleBot
+from nttm.nttm_api import TTMApi
 from storage.models.tickets_storage import TicketsStorage
 
 tickets_storage = TicketsStorage()
 
 
-def initialize_handlers(bot, subscribers_storage):
+def results_mapper(result):
+    if result:
+        return "👍🏻"
+    else:
+        return "❌"
+
+
+def initialize_handlers(bot: AsyncTeleBot, ttm_api: TTMApi, subscribers_storage):
     @bot.message_handler(commands=["start"])
     async def show_commands(message: telebot.types.Message):
         await bot.send_message(message.chat.id,
                                """/sub - подписаться на тикеты
                                /unsub - отписаться от тикетов
-                               /ip - показать ip текущей машины""")
+                               /diag - выполнить диагностику бота(сообщение с результатами удаляется через 15с)
+                               /ip - показать ip машины на которой запущен бот
+                               /help - памятка -  как пользоваться ботом""")
 
     @bot.message_handler(commands=["terminate"])
     async def quit_program(message: telebot.types.Message):
@@ -43,3 +56,17 @@ def initialize_handlers(bot, subscribers_storage):
                 if msg["chat_id"] == subscriber:
                     await bot.delete_message(msg["chat_id"], msg["id"])
         await bot.send_message(message.chat.id, f"""Этот чат отписан от получения новых тикетов""")
+
+    @bot.message_handler(commands=["diag"])
+    async def do_diagnostics(message: telebot.types.Message):
+        chat = message.chat.id
+        await asyncio.sleep(1)
+        await bot.delete_message(chat, message.id)
+        info_msg = await bot.send_message(chat, "Ожидание окончания диагностики")
+        results = await ttm_api.do_diag()
+        await bot.delete_message(chat, info_msg.id)
+        msg = f"""Авторизация в NTTM  - {results_mapper(results['auth'])}
+        Получение тикетов в NTTM  - {results_mapper(results['fetch'])}"""
+        diag_msg = await bot.send_message(chat, msg)
+        await asyncio.sleep(10)
+        await bot.delete_message(chat, diag_msg.id)

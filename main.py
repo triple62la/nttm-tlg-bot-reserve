@@ -1,28 +1,29 @@
+import os
+import sys
+
+import telebot.asyncio_helper
 from telebot.async_telebot import AsyncTeleBot
 import asyncio
-from ttm import TTMApi
+from nttm.nttm_api import TTMApi
 from storage.models.subscribers_storage import Subscribers
 from storage.models.tickets_storage import TicketsStorage
 from storage.models.reports_storage import ReportsStorage
 import bot_handlers
-from utils import find_tt, get_config, ask_config
+from utils import find_tt, load_config
 from console import title, Loader
-import aiohttp
+
+# check_single_instance()
 
 loader = Loader()
 subscribers_storage = Subscribers()
 tickets_storage = TicketsStorage()
 reports_storage = ReportsStorage()
-ERR = None
-try:
-    config = get_config()
-except:
-    config = ask_config()
 
+config = load_config()
 login, passw, url = (config["login"], config["password"], config["nttm_url"])
 ttm_api = TTMApi(login, passw, url, print)
 bot = AsyncTeleBot(token=config["token"])
-bot_handlers.initialize_handlers(bot, subscribers_storage)
+bot_handlers.initialize_handlers(bot, ttm_api, subscribers_storage)
 
 
 def _passes_conditions(tt):
@@ -67,7 +68,10 @@ async def remove_results(tts_to_remove):
     for tt in tts_to_remove:
         messages = await tickets_storage.get_messages(tt["ticketId"])
         for msg in messages:
-            result = await bot.delete_message(msg["chat_id"], msg["id"])
+            try:
+                result = await bot.delete_message(msg["chat_id"], msg["id"])
+            except telebot.asyncio_helper.ApiException:
+                continue
             await asyncio.sleep(1)
         await tickets_storage.remove(tt["ticketId"])
 
@@ -110,26 +114,20 @@ async def main():
     print(title)
     err = None
     try:
+        await remove_reports()
         bot_coro = asyncio.create_task(bot.polling())
         nttm_coro = asyncio.create_task(set_interval(nttm_polling, config["polling_interval"]))
         await asyncio.gather(bot_coro, nttm_coro)
-        await remove_reports()
-    except aiohttp.ClientConnectorError:
-        print("\rПроблема с подключением к NTTM ")
-        await report_problem("Проблема с подключением к NTTM. Проверьте подключение к капсуле")
-        err = "Проблема с подключением к NTTM. Проверьте подключение к капсуле"
     except KeyboardInterrupt:
         err = "Прервано пользователем"
-        quit(-1)
+        sys.exit(-1)
     except Exception as e:
         print(f"\rВ работе главного процесса произошла ошибка: {e}")
-        await report_problem(f"В работе главного процесса произошла ошибка: {e}."
-                             f"Необходим перезапуск программы((")
-        err = f"В работе главного процесса произошла ошибка: {e}.Необходим перезапуск программы(("
+        await report_problem(f"В работе главного процесса произошла ошибка: {e} .")
+        err = f"В работе главного процесса произошла ошибка: {e} Необходим перезапуск программы."
     finally:
         if err and err != "Прервано пользователем":
-            await loader.countdown(err)
-        quit(-1)
+            input("Нажмите любую клавишу")
 
 
 if __name__ == "__main__":

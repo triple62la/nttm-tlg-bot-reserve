@@ -1,0 +1,3 @@
+[submodule "nttm-bot-configurator"]
+	path = nttm-bot-configurator
+	url = https://github.com/triple62la/nttm-bot-configurator
