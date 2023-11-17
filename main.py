@@ -9,7 +9,7 @@ from storage.models.subscribers_storage import Subscribers
 from storage.models.tickets_storage import TicketsStorage
 from storage.models.reports_storage import ReportsStorage
 import bot_handlers
-from utils import find_tt, load_config
+from utils import find_tt, load_config, ExceptionHandler
 from console import title, Loader
 
 # check_single_instance()
@@ -22,7 +22,7 @@ reports_storage = ReportsStorage()
 config = load_config()
 login, passw, url = (config["login"], config["password"], config["nttm_url"])
 ttm_api = TTMApi(login, passw, url, print)
-bot = AsyncTeleBot(token=config["token"])
+bot = AsyncTeleBot(token=config["bot_token"], exception_handler=ExceptionHandler())
 bot_handlers.initialize_handlers(bot, ttm_api, subscribers_storage)
 
 

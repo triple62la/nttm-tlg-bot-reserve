@@ -5,6 +5,7 @@ import sys
 import time
 
 import psutil
+import telebot
 
 
 def find(arr, callback):
@@ -99,3 +100,15 @@ def check_single_instance():
     else:
         with open("process.lock", "w") as f:
             f.write(str(get_self_pid()))
+
+
+class ExceptionHandler(telebot.ExceptionHandler):
+    def handle(self, exception):
+        print(exception.error_code)
+        if exception.error_code == 409:
+            input("Похоже что запущено несколько экземпляров бота. Нажмите любую клавишу для выхода")
+            sys.exit(-1)
+        else:
+            print(f"Был получен ошибочный ответ от телеграмм: {exception}")
+        return True
+
