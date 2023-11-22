@@ -1,3 +1,6 @@
 [submodule "nttm-bot-configurator"]
 	path = nttm-bot-configurator
 	url = https://github.com/triple62la/nttm-bot-configurator
+[submodule "nttm-bot-launcher"]
+	path = nttm-bot-launcher
+	url = https://github.com/triple62la/nttm-bot-launcher
