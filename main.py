@@ -20,8 +20,8 @@ tickets_storage = TicketsStorage()
 reports_storage = ReportsStorage()
 
 config = load_config()
-login, passw, url = (config["login"], config["password"], config["nttm_url"])
-ttm_api = TTMApi(login, passw, url, print)
+
+ttm_api = TTMApi(**config)
 bot = AsyncTeleBot(token=config["bot_token"], exception_handler=ExceptionHandler())
 bot_handlers.initialize_handlers(bot, ttm_api, subscribers_storage)
 
@@ -97,8 +97,8 @@ async def remove_reports():
 
 async def set_interval(callback, sec):
     while True:
-        await loader.countdown("Ожидание", start_from=sec)
         await callback()
+        await loader.countdown("Ожидание", start_from=sec)
 
 
 async def nttm_polling():

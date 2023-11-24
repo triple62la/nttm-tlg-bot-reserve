@@ -7,16 +7,18 @@ from nttm.nttm_exceptions import NttmAuthError, NttmFetchError, NttmNoResultsErr
 
 
 class TTMApi:
-    def __init__(self, login, passw, url, notification_handler, max_auth_attempts=3):
+    def __init__(self, login,
+                 password,
+                 auth_by_login,
+                 nttm_token,
+                 nttm_url,
+                 max_auth_attempts=3):
+
         self.login = login
-        self.passw = passw
-        self.payload = {
-            "username": self.login,
-            "password": self.passw,
-            "force": "true"
-        }
-        self.send_notification = notification_handler
-        self.url = url
+        self.passw = password
+        self.auth_by_login = auth_by_login
+        self.token = nttm_token
+        self.url = nttm_url
         self.headers = {
             "Access-Control-Allow-Credentials": "true",
             "Content-Type": "application/json;charset=UTF-8",
@@ -32,7 +34,21 @@ class TTMApi:
         self.curr_auth_attempt += 1
         if self.curr_auth_attempt > self.max_auth_attempts:
             raise AuthAttemptLimitError("Превышено количество попыток авторизации")
+        if self.auth_by_login:
+            self.token = await self.get_auth_token()
+        else:
+            self.session = aiohttp.ClientSession(base_url=self.url, headers=self.headers,
+                                                 timeout=aiohttp.ClientTimeout(connect=15))
+        self.session.headers.update({'Authorization': "Bearer " + self.token})
+        self.isAuthorized = True
+        self.curr_auth_attempt = 0
 
+    async def get_auth_token(self):
+        self.payload = {
+            "username": self.login,
+            "password": self.passw,
+            "force": "true"
+        }
         self.session = aiohttp.ClientSession(base_url=self.url, headers=self.headers,
                                              timeout=aiohttp.ClientTimeout(connect=15))
 
@@ -44,11 +60,11 @@ class TTMApi:
             if response.status >= 400:
                 raise NttmAuthError(f"От сервера получен ошибочный статус код: {response.status}")
             data = await response.json()
-            self.session.headers.update({'Authorization': "Bearer " + data["id_token"]})
-            self.isAuthorized = True
-            self.curr_auth_attempt = 0
+            return data.get("id_token")
         finally:
             await self.loader.stop()
+
+
 
     async def authorize_with_annonce(self):
 
