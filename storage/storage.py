@@ -1,7 +1,7 @@
 import json
 import os.path
 import aiofiles
-from utils import filter
+from utils import filter, find_index
 
 
 class DataStorage:
@@ -54,3 +54,11 @@ class StoragedList(DataStorage):
 
     async def _reset(self):
         await self._write(self._key, value=[])
+
+    async def _change_item(self, callback, new_item):
+        arr = await self.get_list() or []
+        item_index = find_index(arr, callback)
+        if not item_index:
+            return
+        arr[item_index]=new_item
+        await self._write(self._key, value=arr)

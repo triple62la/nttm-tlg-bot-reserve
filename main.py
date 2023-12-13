@@ -1,5 +1,5 @@
-import os
 import sys
+
 
 import telebot.asyncio_helper
 from telebot.async_telebot import AsyncTeleBot
@@ -14,15 +14,16 @@ from console import title, Loader
 
 # check_single_instance()
 
+
 loader = Loader()
 subscribers_storage = Subscribers()
 tickets_storage = TicketsStorage()
 reports_storage = ReportsStorage()
-
+tlg_exc_handler = ExceptionHandler(err_loger=print)
 config = load_config()
 
-ttm_api = TTMApi(**config)
-bot = AsyncTeleBot(token=config["bot_token"], exception_handler=ExceptionHandler())
+ttm_api = TTMApi(config)
+bot = AsyncTeleBot(token=config["bot_token"], exception_handler=tlg_exc_handler)
 bot_handlers.initialize_handlers(bot, ttm_api, subscribers_storage)
 
 
@@ -57,8 +58,8 @@ async def send_results(parsed_tickets):
     for ticket in parsed_tickets:
         if not await tickets_storage.includes(ticket["ticketId"]):
             msgs_arr = ticket.get("messages", [])
-            for sub_chat_id in await subscribers_storage.get_subscribers():
-                msg = await send_result(sub_chat_id, ticket)
+            for sub in await subscribers_storage.get_subscribers():
+                msg = await send_result(sub["chat_id"], ticket)
                 msgs_arr.append({"chat_id": msg.chat.id, "id": msg.id})
             ticket["messages"] = msgs_arr
             await tickets_storage.add(ticket)
@@ -79,7 +80,7 @@ async def remove_results(tts_to_remove):
 async def report_problem(problem_msg):
     subscribers = await subscribers_storage.get_subscribers()
     for sub in subscribers:
-        msg = await bot.send_message(sub, problem_msg)
+        msg = await bot.send_message(sub["chat_id"], problem_msg)
         await reports_storage.add({"chat_id": msg.chat.id, "id": msg.id})
 
 

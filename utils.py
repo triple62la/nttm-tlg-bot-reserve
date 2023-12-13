@@ -103,12 +103,18 @@ def check_single_instance():
 
 
 class ExceptionHandler(telebot.ExceptionHandler):
+    def __init__(self, err_loger):
+        self.err_loger = err_loger
+
     def handle(self, exception):
-        print(exception.error_code)
-        if exception.error_code == 409:
-            input("Похоже что запущено несколько экземпляров бота. Нажмите любую клавишу для выхода")
-            sys.exit(-1)
-        else:
-            print(f"Был получен ошибочный ответ от телеграмм: {exception}")
-        return True
+        try:
+            if hasattr(exception, "error_code") and exception.error_code == 409:
+                input("Похоже что запущено несколько экземпляров бота. Нажмите любую клавишу для выхода")
+                sys.exit(-1)
+            else:
+                print(f"Был получен ошибочный ответ от телеграмм: {exception}")
+        except Exception as e:
+            self.err_loger(e)
+        finally:
+            return True
 
