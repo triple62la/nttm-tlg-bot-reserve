@@ -55,7 +55,7 @@ class TTMApi:
                                              connector=aiohttp.TCPConnector(ssl=False))
 
         try:
-            response = await self.session.post("/nttm-task-handler/api/authenticate", json=self.payload)
+            response = await self.session.post("/nttm-web-gateway/api/authenticate/login", json=self.payload)
         except Exception as e:
             raise e
         else:

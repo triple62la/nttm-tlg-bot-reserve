@@ -40,12 +40,15 @@ def initialize_handlers(bot: AsyncTeleBot, ttm_api: TTMApi, subscribers_storage)
     @bot.message_handler(commands=["sub"])
     async def add_subscriber(message: telebot.types.Message):
         subs = await subscribers_storage.get_list()
-        if message.chat.id not in subs:
-            await subscribers_storage.add_subscriber(message.chat.id)
-            await bot.send_message(message.chat.id,
-                                   f"""Вы будете получать в этот чат новые тикеты, а так же сообщения об ошибках""")
-        else:
-            await bot.send_message(message.chat.id, f"""Этот чат уже был подписан на получение новых тикетов""")
+        for sub in subs:
+            if message.chat.id  == sub["chat_id"]:
+                await bot.send_message(message.chat.id, f"""Этот чат уже был подписан на получение новых тикетов""")
+                return
+        await subscribers_storage.add_subscriber(message.chat.id)
+        await bot.send_message(message.chat.id,
+                               f"""Вы будете получать в этот чат новые тикеты, а так же сообщения об ошибках""")
+
+
 
     @bot.message_handler(commands=["unsub"])
     async def remove_subscriber(message: telebot.types.Message):
