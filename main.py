@@ -71,7 +71,8 @@ async def remove_results(tts_to_remove):
         for msg in messages:
             try:
                 result = await bot.delete_message(msg["chat_id"], msg["id"])
-            except telebot.asyncio_helper.ApiException:
+
+            except Exception:
                 continue
             await asyncio.sleep(1)
         await tickets_storage.remove(tt["ticketId"])
